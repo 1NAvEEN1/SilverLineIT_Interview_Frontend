@@ -1,6 +1,9 @@
-// Helper function to get auth token from localStorage
+import store from './store';
+
+// Helper function to get auth token from Redux store
 const getAuthToken = () => {
-  const token = localStorage.getItem('accessToken');
+  const state = store.getState();
+  const token = state.user.accessToken;
   return token || null;
 };
 
@@ -28,10 +31,10 @@ const handleApiError = async (response) => {
     
     // Handle 401 Unauthorized - token expired or invalid
     if (response.status === 401) {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Clear Redux state and redirect to login
+      const { clearAuth } = await import('../reducers/userSlice');
+      store.dispatch(clearAuth());
+      window.location.href = '/';
     }
     
     throw {

@@ -1,26 +1,15 @@
 import UserService from './UserService';
+import store from '../app/store';
 
 class AuthService {
-  // Initialize auth state from localStorage
+  // Initialize auth state from Redux store (already handled by redux-persist)
   static initAuth() {
-    const user = UserService.getStoredUser();
-    const accessToken = localStorage.getItem('accessToken');
-    const refreshToken = localStorage.getItem('refreshToken');
-    
-    if (user && accessToken && refreshToken) {
-      return {
-        user,
-        accessToken,
-        refreshToken,
-        isAuthenticated: true,
-      };
-    }
-    
+    const state = store.getState();
     return {
-      user: null,
-      accessToken: null,
-      refreshToken: null,
-      isAuthenticated: false,
+      user: state.user.user,
+      accessToken: state.user.accessToken,
+      refreshToken: state.user.refreshToken,
+      isAuthenticated: state.user.isAuthenticated,
     };
   }
 
@@ -39,7 +28,8 @@ class AuthService {
 
   // Auto refresh token if expired
   static async ensureValidToken() {
-    const accessToken = localStorage.getItem('accessToken');
+    const state = store.getState();
+    const accessToken = state.user.accessToken;
     
     if (!accessToken || this.isTokenExpired(accessToken)) {
       try {
@@ -47,10 +37,9 @@ class AuthService {
         return true;
       } catch (error) {
         // Refresh failed, clear auth and redirect to login
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        const { clearAuth } = await import('../reducers/userSlice');
+        store.dispatch(clearAuth());
+        window.location.href = '/';
         return false;
       }
     }
@@ -60,7 +49,8 @@ class AuthService {
 
   // Setup token refresh timer (refresh 5 minutes before expiry)
   static setupTokenRefresh() {
-    const accessToken = localStorage.getItem('accessToken');
+    const state = store.getState();
+    const accessToken = state.user.accessToken;
     
     if (accessToken) {
       try {

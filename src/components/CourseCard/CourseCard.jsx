@@ -178,11 +178,11 @@ const CourseCard = ({ course, onEdit, onView, onDelete }) => {
         )}
 
         {/* Instructor */}
-        {(course.instructorName || course.instructor) && (
+        {/* {(course.instructorName || course.instructor) && (
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
             <strong>Instructor:</strong> {course.instructorName || course.instructor}
           </Typography>
-        )}
+        )} */}
 
         {/* Created Date */}
         {course.createdAt && (

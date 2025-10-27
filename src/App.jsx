@@ -1,14 +1,14 @@
  import { Provider } from "react-redux";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
- import store from "./app/store";
+import store from "./app/store";
 import React, { lazy, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import ThemeProvider from "./theme";
 import Loadable from "./components/Loadable/Loadable";
 import LoadingAnimation from "./components/LoadingAnimation/LoadingAnimation";
 import SuccessMessage from "./components/SuccessMessage/SuccessMessage";
+import ProtectedRoute from "./components/ProtectedRoute/ProtectedRoute";
 import AuthService from "./services/AuthService";
-import { setAuthData } from "./reducers/userSlice";
 import "./App.css";
 
 //----------------------import Pages-----------------------------//
@@ -37,7 +37,11 @@ const router = createBrowserRouter([
   },
   {
     path: "/",
-    element: <Layout />,
+    element: (
+      <ProtectedRoute>
+        <Layout />
+      </ProtectedRoute>
+    ),
     children: [
       {
         path: "/home",
@@ -63,35 +67,30 @@ const router = createBrowserRouter([
   },
 ]);
 
-// Component to initialize auth state
+// Component to initialize auth state and setup token refresh
 const AuthInitializer = () => {
-  const dispatch = useDispatch();
+  const isAuthenticated = useSelector((state) => state.user.isAuthenticated);
 
   useEffect(() => {
-    // Initialize auth state from localStorage on app start
-    const authState = AuthService.initAuth();
-    
-    if (authState.isAuthenticated) {
-      dispatch(setAuthData(authState));
-      
-      // Setup automatic token refresh
+    // Setup automatic token refresh if user is authenticated
+    if (isAuthenticated) {
       AuthService.setupTokenRefresh();
     }
-  }, [dispatch]);
+  }, [isAuthenticated]);
 
   return null;
 };
 
 const App = () => {
   return (
-     <Provider store={store}>
-    <ThemeProvider>
-    <AuthInitializer />
-    <SuccessMessage/>
-    <LoadingAnimation />
-      <RouterProvider router={router} />
-    </ThemeProvider>
-     </Provider>
+    <Provider store={store}>
+      <ThemeProvider>
+        <AuthInitializer />
+        <SuccessMessage />
+        <LoadingAnimation />
+        <RouterProvider router={router} />
+      </ThemeProvider>
+    </Provider>
   );
 };
 

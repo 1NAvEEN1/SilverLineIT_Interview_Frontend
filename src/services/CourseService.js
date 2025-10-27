@@ -32,26 +32,38 @@ class CourseService {
   // Create a new course with optional content/files
   static async createCourse(payload) {
     try {
-      const formData = new FormData();
-      
-      // Add course data as a single object
-      formData.append('course', JSON.stringify({
+      // Convert files to base64 if present
+      const filesData = await Promise.all(
+        (payload.files || []).map(async (file) => {
+          if (!file) return null;
+          
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+          });
+          
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: base64
+          };
+        })
+      );
+
+      const requestPayload = {
         courseName: payload.courseData.courseName,
         courseCode: payload.courseData.courseCode,
         description: payload.courseData.description,
         instructorId: payload.courseData.instructorId,
-      }));
-      
-      // Add files if provided
-      if (payload.files && payload.files.length > 0) {
-        payload.files.forEach((file) => {
-          formData.append('files', file);
-        });
-      }
+        files: filesData.filter(f => f !== null)
+      };
 
-      const response = await postFormData({
+      const response = await post({
         path: "/courses",
-        formData: formData,
+        requestBody: requestPayload,
         requiresAuth: true,
       });
       
@@ -64,26 +76,38 @@ class CourseService {
   // Update a course with optional new content/files
   static async updateCourse(courseId, payload) {
     try {
-      const formData = new FormData();
-      
-      // Add course data as a single object
-      formData.append('course', JSON.stringify({
+      // Convert files to base64 if present
+      const filesData = await Promise.all(
+        (payload.files || []).map(async (file) => {
+          if (!file) return null;
+          
+          const base64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = error => reject(error);
+          });
+          
+          return {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: base64
+          };
+        })
+      );
+
+      const requestPayload = {
         courseName: payload.courseData.courseName,
         courseCode: payload.courseData.courseCode,
         description: payload.courseData.description,
         instructorId: payload.courseData.instructorId,
-      }));
-      
-      // Add new files if provided
-      if (payload.files && payload.files.length > 0) {
-        payload.files.forEach((file) => {
-          formData.append('files', file);
-        });
-      }
+        files: filesData.filter(f => f !== null)
+      };
 
-      const response = await putFormData({
+      const response = await put({
         path: `/courses/${courseId}`,
-        formData: formData,
+        requestBody: requestPayload,
         requiresAuth: true,
       });
       

@@ -12,6 +12,9 @@ import {
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  Dialog,
+  DialogContent,
+  DialogTitle,
 } from "@mui/material";
 import {
   CloudUpload,
@@ -20,6 +23,8 @@ import {
   VideoLibrary,
   Image as ImageIcon,
   InsertDriveFile,
+  Visibility,
+  Close,
 } from "@mui/icons-material";
 
 const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initialFiles = [] }) => {
@@ -27,6 +32,7 @@ const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initia
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
+  const [previewDialog, setPreviewDialog] = useState({ open: false, file: null, url: null });
 
   // File validation - API accepts: PDF, MP4, JPG, JPEG, PNG with 10MB max size
   const FILE_TYPES = {
@@ -127,6 +133,19 @@ const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initia
     }
     
     setError(null);
+  };
+
+  const handlePreview = (fileObj) => {
+    const file = fileObj.file;
+    const url = URL.createObjectURL(file);
+    setPreviewDialog({ open: true, file: fileObj, url });
+  };
+
+  const handleClosePreview = () => {
+    if (previewDialog.url) {
+      URL.revokeObjectURL(previewDialog.url);
+    }
+    setPreviewDialog({ open: false, file: null, url: null });
   };
 
   const handleUpload = async () => {
@@ -252,6 +271,8 @@ const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initia
                     bgcolor: "background.default",
                     borderRadius: 1,
                     mb: 1,
+                    boxShadow: 5,
+                    py: 1.5,
                   }}
                 >
                   <Icon
@@ -282,15 +303,28 @@ const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initia
                     }
                   />
                   <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => handleRemoveFile(fileObj.id)}
-                      disabled={uploading}
-                      size="small"
-                      sx={{ color: "error.main" }}
-                    >
-                      <Delete />
-                    </IconButton>
+                    <Box sx={{ display: "flex", gap: 0.5 }}>
+                      {(fileObj.type === 'image' || fileObj.type === 'pdf') && (
+                        <IconButton
+                          edge="end"
+                          onClick={() => handlePreview(fileObj)}
+                          disabled={uploading}
+                          size="small"
+                          sx={{ color: "primary.main" }}
+                        >
+                          <Visibility />
+                        </IconButton>
+                      )}
+                      <IconButton
+                        edge="end"
+                        onClick={() => handleRemoveFile(fileObj.id)}
+                        disabled={uploading}
+                        size="small"
+                        sx={{ color: "error.main" }}
+                      >
+                        <Delete />
+                      </IconButton>
+                    </Box>
                   </ListItemSecondaryAction>
                 </ListItem>
               );
@@ -335,6 +369,75 @@ const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initia
           )}
         </Paper>
       )}
+
+      {/* Preview Dialog */}
+      <Dialog
+        open={previewDialog.open}
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            borderBottom: 1,
+            borderColor: "divider",
+          }}
+        >
+          <Typography variant="h6" noWrap sx={{ maxWidth: "90%" }}>
+            {previewDialog.file?.file.name}
+          </Typography>
+          <IconButton onClick={handleClosePreview} size="small">
+            <Close />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ p: 0, bgcolor: "background.default" }}>
+          {previewDialog.file?.type === 'image' && previewDialog.url && (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "400px",
+                p: 2,
+              }}
+            >
+              <Box
+                component="img"
+                src={previewDialog.url}
+                alt={previewDialog.file.file.name}
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                }}
+              />
+            </Box>
+          )}
+          {previewDialog.file?.type === 'pdf' && previewDialog.url && (
+            <Box sx={{ height: "70vh" }}>
+              <iframe
+                src={previewDialog.url}
+                style={{ width: "100%", height: "100%", border: "none" }}
+                title={previewDialog.file.file.name}
+              />
+            </Box>
+          )}
+          {previewDialog.file?.type === 'video' && previewDialog.url && (
+            <Box sx={{ bgcolor: "black", display: "flex", justifyContent: "center" }}>
+              <video
+                controls
+                style={{ width: "100%", maxHeight: "70vh" }}
+                src={previewDialog.url}
+              >
+                Your browser does not support the video tag.
+              </video>
+            </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };

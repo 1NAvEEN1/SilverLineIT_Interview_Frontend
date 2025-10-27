@@ -1,4 +1,6 @@
 import { post, get, put } from "../app/apiManager";
+import store from "../app/store";
+import { setAuthData, clearAuth, setUser } from "../reducers/userSlice";
 
 class UserService {
   // Register a new instructor
@@ -15,11 +17,13 @@ class UserService {
         requiresAuth: false,
       });
 
-      // Store tokens and user data
+      // Store tokens and user data in Redux
       if (response.accessToken) {
-        localStorage.setItem('accessToken', response.accessToken);
-        localStorage.setItem('refreshToken', response.refreshToken);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        store.dispatch(setAuthData({
+          user: response.user,
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        }));
       }
 
       return response;
@@ -40,11 +44,13 @@ class UserService {
         requiresAuth: false,
       });
 
-      // Store tokens and user data
+      // Store tokens and user data in Redux
       if (response.accessToken) {
-        localStorage.setItem('accessToken', response.accessToken);
-        localStorage.setItem('refreshToken', response.refreshToken);
-        localStorage.setItem('user', JSON.stringify(response.user));
+        store.dispatch(setAuthData({
+          user: response.user,
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        }));
       }
 
       return response;
@@ -56,7 +62,8 @@ class UserService {
   // Refresh access token
   static async refreshToken() {
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const state = store.getState();
+      const refreshToken = state.user.refreshToken;
       
       if (!refreshToken) {
         throw new Error('No refresh token available');
@@ -70,10 +77,13 @@ class UserService {
         requiresAuth: false,
       });
 
-      // Update tokens
+      // Update tokens in Redux
       if (response.accessToken) {
-        localStorage.setItem('accessToken', response.accessToken);
-        localStorage.setItem('refreshToken', response.refreshToken);
+        store.dispatch(setAuthData({
+          user: state.user.user,
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
+        }));
       }
 
       return response;
@@ -85,7 +95,8 @@ class UserService {
   // Logout
   static async logout() {
     try {
-      const refreshToken = localStorage.getItem('refreshToken');
+      const state = store.getState();
+      const refreshToken = state.user.refreshToken;
       
       if (refreshToken) {
         await post({
@@ -97,17 +108,13 @@ class UserService {
         });
       }
 
-      // Clear local storage
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      // Clear Redux state
+      store.dispatch(clearAuth());
 
       return { success: true };
     } catch (error) {
-      // Even if the API call fails, clear local storage
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
+      // Even if the API call fails, clear Redux state
+      store.dispatch(clearAuth());
       throw error;
     }
   }
@@ -120,8 +127,8 @@ class UserService {
         requiresAuth: true,
       });
 
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response));
+      // Update stored user data in Redux
+      store.dispatch(setUser(response));
 
       return response;
     } catch (error) {
@@ -142,8 +149,8 @@ class UserService {
         requiresAuth: true,
       });
 
-      // Update stored user data
-      localStorage.setItem('user', JSON.stringify(response));
+      // Update stored user data in Redux
+      store.dispatch(setUser(response));
 
       return response;
     } catch (error) {
@@ -151,20 +158,16 @@ class UserService {
     }
   }
 
-  // Get stored user from localStorage
+  // Get stored user from Redux store
   static getStoredUser() {
-    try {
-      const userStr = localStorage.getItem('user');
-      return userStr ? JSON.parse(userStr) : null;
-    } catch (error) {
-      return null;
-    }
+    const state = store.getState();
+    return state.user.user;
   }
 
   // Check if user is authenticated
   static isAuthenticated() {
-    const token = localStorage.getItem('accessToken');
-    return !!token;
+    const state = store.getState();
+    return state.user.isAuthenticated && !!state.user.accessToken;
   }
 }
 

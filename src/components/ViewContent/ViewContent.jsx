@@ -243,11 +243,12 @@ const ViewContent = ({ courseId, onDelete }) => {
 
                   <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 2 }}>
                     <Box>
-                      {(content.fileType.startsWith('image/') || content.fileType === 'application/pdf') && (
+                      {(content.fileType.startsWith('image/') || content.fileType === 'application/pdf' || content.fileType === 'video/mp4') && (
                         <IconButton
                           size="small"
                           onClick={() => handlePreview(content)}
                           sx={{ color: "primary.main" }}
+                          title="Preview"
                         >
                           <Visibility fontSize="small" />
                         </IconButton>
@@ -256,6 +257,7 @@ const ViewContent = ({ courseId, onDelete }) => {
                         size="small"
                         onClick={() => handleDownload(content)}
                         sx={{ color: "info.main" }}
+                        title="Download"
                       >
                         <Download fontSize="small" />
                       </IconButton>
@@ -264,6 +266,7 @@ const ViewContent = ({ courseId, onDelete }) => {
                       size="small"
                       onClick={() => handleDelete(content)}
                       sx={{ color: "error.main" }}
+                      title="Delete"
                     >
                       <Delete fontSize="small" />
                     </IconButton>
@@ -292,7 +295,7 @@ const ViewContent = ({ courseId, onDelete }) => {
             borderColor: "divider",
           }}
         >
-          <Typography variant="h6">
+          <Typography variant="h6" noWrap sx={{ maxWidth: "90%" }}>
             {previewDialog.content?.fileName}
           </Typography>
           <IconButton
@@ -301,14 +304,28 @@ const ViewContent = ({ courseId, onDelete }) => {
             <Close />
           </IconButton>
         </Box>
-        <DialogContent sx={{ p: 0 }}>
+        <DialogContent sx={{ p: 0, bgcolor: "background.default" }}>
           {previewDialog.content?.fileType?.startsWith('image/') && (
             <Box
-              component="img"
-              src={CourseService.getPreviewUrl(previewDialog.content.fileUrl)}
-              alt={previewDialog.content.fileName}
-              sx={{ width: "100%", height: "auto" }}
-            />
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "400px",
+                p: 2,
+              }}
+            >
+              <Box
+                component="img"
+                src={CourseService.getPreviewUrl(previewDialog.content.fileUrl)}
+                alt={previewDialog.content.fileName}
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: "70vh",
+                  objectFit: "contain",
+                }}
+              />
+            </Box>
           )}
           {previewDialog.content?.fileType === 'application/pdf' && (
             <Box sx={{ height: "70vh" }}>
@@ -317,6 +334,17 @@ const ViewContent = ({ courseId, onDelete }) => {
                 style={{ width: "100%", height: "100%", border: "none" }}
                 title={previewDialog.content.fileName}
               />
+            </Box>
+          )}
+          {previewDialog.content?.fileType === 'video/mp4' && (
+            <Box sx={{ bgcolor: "black", display: "flex", justifyContent: "center" }}>
+              <video
+                controls
+                style={{ width: "100%", maxHeight: "70vh" }}
+                src={CourseService.getPreviewUrl(previewDialog.content.fileUrl)}
+              >
+                Your browser does not support the video tag.
+              </video>
             </Box>
           )}
         </DialogContent>

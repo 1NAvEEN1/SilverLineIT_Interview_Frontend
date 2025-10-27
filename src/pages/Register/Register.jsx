@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Button,
@@ -27,7 +27,7 @@ import {
   ArrowForward,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setAuthData } from "../../reducers/userSlice";
 import UserService from "../../services/UserService";
 import AuthService from "../../services/AuthService";
@@ -35,12 +35,20 @@ import AuthService from "../../services/AuthService";
 const Register = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.user);
   const [activeStep, setActiveStep] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState("");
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/home", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -275,17 +283,6 @@ const Register = () => {
             </Grid>
 
             <TextField
-              label="Phone Number (Optional)"
-              value={formData.phone}
-              onChange={handleChange("phone")}
-              fullWidth
-              margin="normal"
-              size="small"
-              placeholder="+1 (555) 123-4567"
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-            />
-
-            <TextField
               select
               label="Role"
               value={formData.role}
@@ -296,33 +293,9 @@ const Register = () => {
               sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
             >
               <MenuItem value="Instructor">Instructor</MenuItem>
-              <MenuItem value="Student">Student</MenuItem>
-              <MenuItem value="Admin">Admin</MenuItem>
+              <MenuItem value="Student" disabled>Student</MenuItem>
+              <MenuItem value="Admin" disabled>Admin</MenuItem>
             </TextField>
-
-            <TextField
-              label="Organization (Optional)"
-              value={formData.organization}
-              onChange={handleChange("organization")}
-              fullWidth
-              margin="normal"
-              size="small"
-              placeholder="e.g., University Name"
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-            />
-
-            <TextField
-              label="Bio (Optional)"
-              value={formData.bio}
-              onChange={handleChange("bio")}
-              fullWidth
-              margin="normal"
-              size="small"
-              multiline
-              rows={3}
-              placeholder="Tell us a bit about yourself..."
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
-            />
           </Box>
         );
 
