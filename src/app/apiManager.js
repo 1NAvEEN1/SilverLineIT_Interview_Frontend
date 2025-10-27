@@ -28,3 +28,32 @@ export const get = async ({ path, header = {} }) => {
   const body = await response.json();
   return body;
 };
+
+export const put = async ({ path, requestBody, header = {} }) => {
+  const baseUrl = import.meta.env.VITE_BASE_URL;
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...header,
+    },
+    body: JSON.stringify(requestBody),
+  });
+  const body = await response.json();
+  return body;
+};
+
+export const del = async ({ path, header = {} }) => {
+  const baseUrl = import.meta.env.VITE_BASE_URL;
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...header,
+    },
+  });
+  const body = await response.json();
+  return body;
+};

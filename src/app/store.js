@@ -3,6 +3,7 @@ import userReducer from "../reducers/userSlice";
 import loaderReducer from "../reducers/loaderSlice";
 import successMessageSlice from "../reducers/successMessageSlice";
 import networkStatusSlice from "../reducers/networkStatusSlice";
+import courseReducer from "../reducers/courseSlice";
 import thunk from "redux-thunk";
 import storage from "redux-persist/lib/storage";
 import persistReducer from "redux-persist/es/persistReducer";
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   loader: loaderReducer,
   success: successMessageSlice,
   networkStatus: networkStatusSlice,
+  course: courseReducer,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
