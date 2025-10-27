@@ -13,6 +13,8 @@ import {
   Step,
   StepLabel,
   MenuItem,
+  Alert,
+  Divider,
 } from "@mui/material";
 import {
   Visibility,
@@ -26,7 +28,9 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUser } from "../../reducers/userSlice";
+import { setAuthData } from "../../reducers/userSlice";
+import UserService from "../../services/UserService";
+import AuthService from "../../services/AuthService";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -36,6 +40,7 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -96,22 +101,40 @@ const Register = () => {
     setActiveStep((prev) => prev - 1);
   };
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault();
     setSubmitting(true);
+    setApiError("");
 
-    // Mock registration - replace with actual API call
-    setTimeout(() => {
-      dispatch(
-        setUser({
-          email: formData.email,
-          name: `${formData.firstName} ${formData.lastName}`,
-        })
+    try {
+      // Call the register API
+      const response = await UserService.register(
+        formData.firstName,
+        formData.lastName,
+        formData.email,
+        formData.password
       );
 
+      // Store auth data in Redux
+      dispatch(setAuthData({
+        user: response.user,
+        accessToken: response.accessToken,
+        refreshToken: response.refreshToken,
+      }));
+
+      // Setup automatic token refresh
+      AuthService.setupTokenRefresh();
+
+      // Navigate to home
       navigate("/home");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setApiError(error.message || "Registration failed. Please try again.");
+      // Go back to first step to fix errors
+      setActiveStep(0);
+    } finally {
       setSubmitting(false);
-    }, 1000);
+    }
   };
 
   const renderStepContent = (step) => {
@@ -504,6 +527,17 @@ const Register = () => {
 
           {/* Form */}
           <Box component="form" onSubmit={handleSubmit} noValidate>
+            {/* API Error Alert */}
+            {apiError && (
+              <Alert 
+                severity="error" 
+                onClose={() => setApiError("")}
+                sx={{ mb: 2, borderRadius: 2 }}
+              >
+                {apiError}
+              </Alert>
+            )}
+
             {renderStepContent(activeStep)}
 
             {/* Navigation Buttons */}

@@ -15,7 +15,8 @@ import {
 import { Person, Logout, School } from "@mui/icons-material";
 import { Outlet, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { setUser } from "../reducers/userSlice";
+import { clearAuth } from "../reducers/userSlice";
+import UserService from "../services/UserService";
 
 const Layout = () => {
   const navigate = useNavigate();
@@ -37,10 +38,19 @@ const Layout = () => {
     handleMenuClose();
   };
 
-  const handleLogout = () => {
-    dispatch(setUser(null));
-    navigate("/");
-    handleMenuClose();
+  const handleLogout = async () => {
+    try {
+      await UserService.logout();
+      dispatch(clearAuth());
+      navigate("/");
+      handleMenuClose();
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Even if API call fails, clear local state
+      dispatch(clearAuth());
+      navigate("/");
+      handleMenuClose();
+    }
   };
 
   const getInitials = (name) => {
@@ -50,6 +60,15 @@ const Layout = () => {
       return `${names[0][0]}${names[1][0]}`.toUpperCase();
     }
     return name.substring(0, 2).toUpperCase();
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (!user) return "Instructor";
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return user.email || "Instructor";
   };
 
   return (
@@ -84,7 +103,7 @@ const Layout = () => {
           <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <Box sx={{ display: { xs: "none", sm: "block" } }}>
               <Typography variant="body2" sx={{ color: "white", opacity: 0.9 }}>
-                {user?.name || user?.email || "Instructor"}
+                {getUserDisplayName()}
               </Typography>
             </Box>
             <IconButton
@@ -108,7 +127,7 @@ const Layout = () => {
                   border: "2px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                {getInitials(user?.name || user?.email)}
+                {getInitials(getUserDisplayName())}
               </Avatar>
             </IconButton>
           </Box>

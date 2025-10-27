@@ -20,9 +20,16 @@ import {
 
 const CourseCard = ({ course, onEdit, onView, onDelete }) => {
   const getContentSummary = () => {
-    if (!course.contentCount) return null;
+    if (!course.contents || course.contents.length === 0) return null;
     
-    const { pdfs = 0, videos = 0, images = 0 } = course.contentCount;
+    const pdfs = course.contents.filter(c => c.fileType === 'application/pdf').length;
+    const videos = course.contents.filter(c => c.fileType === 'video/mp4').length;
+    const images = course.contents.filter(c => 
+      c.fileType === 'image/jpeg' || 
+      c.fileType === 'image/jpg' || 
+      c.fileType === 'image/png'
+    ).length;
+    
     const items = [];
     
     if (pdfs > 0) items.push({ icon: PictureAsPdf, count: pdfs, color: "#d32f2f" });
@@ -58,9 +65,9 @@ const CourseCard = ({ course, onEdit, onView, onDelete }) => {
           height="180"
           image={
             course.thumbnail ||
-            `https://source.unsplash.com/random/400x300?course,education,${course.id}`
+            `https://source.unsplash.com/random/400x300?course,education,${course.id || course.courseCode}`
           }
-          alt={course.title}
+          alt={course.courseName || course.title}
           sx={{
             objectFit: "cover",
           }}
@@ -109,8 +116,27 @@ const CourseCard = ({ course, onEdit, onView, onDelete }) => {
             minHeight: "2.8em",
           }}
         >
-          {course.title}
+          {course.courseName || course.title}
         </Typography>
+
+        {/* Course Code */}
+        {course.courseCode && (
+          <Typography
+            variant="caption"
+            sx={{
+              display: "inline-block",
+              bgcolor: "primary.lighter",
+              color: "primary.main",
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontWeight: 600,
+              mb: 1,
+            }}
+          >
+            {course.courseCode}
+          </Typography>
+        )}
 
         <Typography
           variant="body2"
@@ -152,16 +178,16 @@ const CourseCard = ({ course, onEdit, onView, onDelete }) => {
         )}
 
         {/* Instructor */}
-        {course.instructor && (
+        {(course.instructorName || course.instructor) && (
           <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            <strong>Instructor:</strong> {course.instructor}
+            <strong>Instructor:</strong> {course.instructorName || course.instructor}
           </Typography>
         )}
 
-        {/* Duration */}
-        {course.duration && (
+        {/* Created Date */}
+        {course.createdAt && (
           <Typography variant="caption" color="text.secondary">
-            <strong>Duration:</strong> {course.duration}
+            <strong>Created:</strong> {new Date(course.createdAt).toLocaleDateString()}
           </Typography>
         )}
       </CardContent>

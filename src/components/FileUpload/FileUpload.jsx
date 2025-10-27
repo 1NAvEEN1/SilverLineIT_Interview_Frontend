@@ -22,31 +22,31 @@ import {
   InsertDriveFile,
 } from "@mui/icons-material";
 
-const FileUpload = ({ onUpload, courseId, disabled = false }) => {
-  const [selectedFiles, setSelectedFiles] = useState([]);
+const FileUpload = ({ onUpload, onFileSelect, courseId, disabled = false, initialFiles = [] }) => {
+  const [selectedFiles, setSelectedFiles] = useState(initialFiles);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState(null);
 
-  // File validation
+  // File validation - API accepts: PDF, MP4, JPG, JPEG, PNG with 10MB max size
   const FILE_TYPES = {
     pdf: {
       extensions: [".pdf"],
       maxSize: 10 * 1024 * 1024, // 10MB
       icon: PictureAsPdf,
-      color: "#d32f2f",
+      color: "#d06363ff",
     },
     video: {
-      extensions: [".mp4", ".avi", ".mov", ".mkv", ".webm"],
-      maxSize: 100 * 1024 * 1024, // 100MB
+      extensions: [".mp4"],
+      maxSize: 10 * 1024 * 1024, // 10MB
       icon: VideoLibrary,
-      color: "#1976d2",
+      color: "#5a99d8ff",
     },
     image: {
-      extensions: [".jpg", ".jpeg", ".png", ".gif", ".webp"],
-      maxSize: 5 * 1024 * 1024, // 5MB
+      extensions: [".jpg", ".jpeg", ".png"],
+      maxSize: 10 * 1024 * 1024, // 10MB
       icon: ImageIcon,
-      color: "#388e3c",
+      color: "#53cc57ff",
     },
   };
 
@@ -66,7 +66,7 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
     if (!fileType) {
       return {
         valid: false,
-        error: `Unsupported file type. Allowed: PDF, Video (MP4, AVI, MOV, MKV, WebM), Image (JPG, PNG, GIF, WebP)`,
+        error: `Unsupported file type. Allowed: PDF, MP4, JPG, JPEG, PNG`,
       };
     }
 
@@ -106,18 +106,38 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
       setError(null);
     }
 
-    setSelectedFiles([...selectedFiles, ...validatedFiles]);
+    const newFiles = [...selectedFiles, ...validatedFiles];
+    setSelectedFiles(newFiles);
+    
+    // If onFileSelect callback is provided (for create mode), call it
+    if (onFileSelect) {
+      onFileSelect(newFiles);
+    }
+    
     event.target.value = ""; // Reset input
   };
 
   const handleRemoveFile = (fileId) => {
-    setSelectedFiles(selectedFiles.filter((f) => f.id !== fileId));
+    const newFiles = selectedFiles.filter((f) => f.id !== fileId);
+    setSelectedFiles(newFiles);
+    
+    // If onFileSelect callback is provided (for create mode), call it
+    if (onFileSelect) {
+      onFileSelect(newFiles);
+    }
+    
     setError(null);
   };
 
   const handleUpload = async () => {
     if (selectedFiles.length === 0) {
       setError("Please select files to upload");
+      return;
+    }
+
+    // If only onFileSelect is provided (create mode without courseId), don't upload
+    if (!onUpload) {
+      setError("Upload handler not provided");
       return;
     }
 
@@ -133,6 +153,11 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
       // Clear files after successful upload
       setSelectedFiles([]);
       setUploadProgress(0);
+      
+      // Clear the parent's selected files too
+      if (onFileSelect) {
+        onFileSelect([]);
+      }
     } catch (err) {
       setError(err.message || "Failed to upload files");
     } finally {
@@ -181,7 +206,7 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
         }}
       >
         <input
-          accept=".pdf,.mp4,.avi,.mov,.mkv,.webm,.jpg,.jpeg,.png,.gif,.webp"
+          accept=".pdf,.mp4,.jpg,.jpeg,.png"
           style={{ display: "none" }}
           id="file-upload"
           type="file"
@@ -196,7 +221,7 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
               Select Files to Upload
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              PDFs (up to 10MB), Videos (up to 100MB), Images (up to 5MB)
+              PDF, MP4, JPG, JPEG, PNG (up to 10MB each)
             </Typography>
           </Box>
         </label>
@@ -287,25 +312,27 @@ const FileUpload = ({ onUpload, courseId, disabled = false }) => {
             </Box>
           )}
 
-          {/* Upload Button */}
-          <Button
-            fullWidth
-            variant="contained"
-            startIcon={<CloudUpload />}
-            onClick={handleUpload}
-            disabled={disabled || uploading || selectedFiles.length === 0}
-            sx={{
-              mt: 2,
-              py: 1.5,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              fontWeight: 600,
-              "&:hover": {
-                background: "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
-              },
-            }}
-          >
-            {uploading ? "Uploading..." : "Upload Files"}
-          </Button>
+          {/* Upload Button - Only show in edit mode when onUpload is provided */}
+          {onUpload && (
+            <Button
+              fullWidth
+              variant="contained"
+              startIcon={<CloudUpload />}
+              onClick={handleUpload}
+              disabled={disabled || uploading || selectedFiles.length === 0}
+              sx={{
+                mt: 2,
+                py: 1.5,
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                fontWeight: 600,
+                "&:hover": {
+                  background: "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
+                },
+              }}
+            >
+              {uploading ? "Uploading..." : "Upload Files"}
+            </Button>
+          )}
         </Paper>
       )}
     </Box>

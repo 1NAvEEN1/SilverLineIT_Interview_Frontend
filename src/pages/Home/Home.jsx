@@ -17,12 +17,8 @@ import CourseCard from "../../components/CourseCard/CourseCard";
 import CourseService from "../../services/CourseService";
 import {
   setCourses,
-  appendCourses,
   setSearchQuery,
-  setCurrentPage,
-  setHasMore,
   setTotalCourses,
-  resetCourses,
   deleteCourse as deleteCourseAction,
 } from "../../reducers/courseSlice";
 
@@ -30,82 +26,61 @@ const Home = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const { courses, searchQuery, currentPage, hasMore } = useSelector(
-    (state) => state.course
-  );
+  const { courses, searchQuery } = useSelector((state) => state.course);
+  const user = useSelector((state) => state.user.user);
+  console.log(user);
 
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState(searchQuery);
+  const [filteredCourses, setFilteredCourses] = useState([]);
 
   // Fetch courses
-  const fetchCourses = useCallback(
-    async (page = 1, search = "", append = false) => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchCourses = useCallback(async () => {
+    if (!user || !user.userId) {
+      setError("User not authenticated");
+      setInitialLoading(false);
+      return;
+    }
 
-        const response = await CourseService.getCourses(page, 9, search);
+    try {
+      setLoading(true);
+      setError(null);
 
-        if (response.success) {
-          if (append) {
-            dispatch(appendCourses(response.data.courses));
-          } else {
-            dispatch(setCourses(response.data.courses));
-          }
-          
-          dispatch(setTotalCourses(response.data.total));
-          dispatch(setCurrentPage(page));
-          dispatch(setHasMore(response.data.courses.length === 9));
-        } else {
-          setError(response.message || "Failed to fetch courses");
-        }
-      } catch (err) {
-        setError("An error occurred while fetching courses");
-        console.error(err);
-      } finally {
-        setLoading(false);
-        setInitialLoading(false);
-      }
-    },
-    [dispatch]
-  );
+      const response = await CourseService.getCoursesByInstructor(user.userId);
+      
+      dispatch(setCourses(response));
+      dispatch(setTotalCourses(response.length));
+    } catch (err) {
+      console.error("Error fetching courses:", err);
+      setError(err.message || "Failed to fetch courses. Please try again.");
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [dispatch, user]);
 
   // Initial load
   useEffect(() => {
-    fetchCourses(1, searchQuery);
-  }, []);
+    fetchCourses();
+  }, [fetchCourses]);
 
-  // Search handler with debounce
+  // Filter courses based on search
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchTerm !== searchQuery) {
-        dispatch(resetCourses());
-        dispatch(setSearchQuery(searchTerm));
-        fetchCourses(1, searchTerm);
-      }
-    }, 500);
-
-    return () => clearTimeout(timer);
-  }, [searchTerm, searchQuery, dispatch, fetchCourses]);
-
-  // Infinite scroll handler
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop >=
-          document.documentElement.offsetHeight - 300 &&
-        hasMore &&
-        !loading
-      ) {
-        fetchCourses(currentPage + 1, searchQuery, true);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [currentPage, hasMore, loading, searchQuery, fetchCourses]);
+    if (!searchTerm) {
+      setFilteredCourses(courses);
+    } else {
+      const filtered = courses.filter(
+        (course) =>
+          course.courseName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          course.courseCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          course.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredCourses(filtered);
+    }
+    dispatch(setSearchQuery(searchTerm));
+  }, [searchTerm, courses, dispatch]);
 
   const handleAddCourse = () => {
     navigate("/courses/add");
@@ -120,17 +95,22 @@ const Home = () => {
   };
 
   const handleDeleteCourse = async (course) => {
-    if (window.confirm(`Are you sure you want to delete "${course.title}"?`)) {
+    if (window.confirm(`Are you sure you want to delete "${course.courseName}"?`)) {
       try {
-        const response = await CourseService.deleteCourse(course.id);
-        if (response.success) {
-          dispatch(deleteCourseAction(course.id));
-        } else {
-          alert(response.message || "Failed to delete course");
-        }
+        setLoading(true);
+        // Note: There's no delete course endpoint in the API
+        // Only delete course content is available
+        // For now, we'll show an alert
+        alert("Course deletion is not available. You can only delete course content.");
+        setLoading(false);
+        
+        // If you implement course deletion on backend, uncomment this:
+        // await CourseService.deleteCourse(course.id);
+        // dispatch(deleteCourseAction(course.id));
       } catch (err) {
-        alert("An error occurred while deleting the course");
-        console.error(err);
+        console.error("Error deleting course:", err);
+        alert(err.message || "An error occurred while deleting the course");
+        setLoading(false);
       }
     }
   };
@@ -239,7 +219,7 @@ const Home = () => {
       )}
 
       {/* Course Grid */}
-      {courses.length === 0 && !loading ? (
+      {filteredCourses.length === 0 && !loading ? (
         <Box
           sx={{
             textAlign: "center",
@@ -272,7 +252,7 @@ const Home = () => {
         </Box>
       ) : (
         <Grid container spacing={3}>
-          {courses.map((course) => (
+          {filteredCourses.map((course) => (
             <Grid item xs={12} sm={6} md={4} key={course.id}>
               <CourseCard
                 course={course}

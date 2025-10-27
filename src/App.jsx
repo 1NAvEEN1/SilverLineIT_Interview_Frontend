@@ -1,11 +1,14 @@
  import { Provider } from "react-redux";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
  import store from "./app/store";
-import React, { lazy } from "react";
+import React, { lazy, useEffect } from "react";
+import { useDispatch } from "react-redux";
 import ThemeProvider from "./theme";
 import Loadable from "./components/Loadable/Loadable";
 import LoadingAnimation from "./components/LoadingAnimation/LoadingAnimation";
 import SuccessMessage from "./components/SuccessMessage/SuccessMessage";
+import AuthService from "./services/AuthService";
+import { setAuthData } from "./reducers/userSlice";
 import "./App.css";
 
 //----------------------import Pages-----------------------------//
@@ -60,10 +63,30 @@ const router = createBrowserRouter([
   },
 ]);
 
+// Component to initialize auth state
+const AuthInitializer = () => {
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    // Initialize auth state from localStorage on app start
+    const authState = AuthService.initAuth();
+    
+    if (authState.isAuthenticated) {
+      dispatch(setAuthData(authState));
+      
+      // Setup automatic token refresh
+      AuthService.setupTokenRefresh();
+    }
+  }, [dispatch]);
+
+  return null;
+};
+
 const App = () => {
   return (
      <Provider store={store}>
     <ThemeProvider>
+    <AuthInitializer />
     <SuccessMessage/>
     <LoadingAnimation />
       <RouterProvider router={router} />

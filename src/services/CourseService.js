@@ -1,32 +1,14 @@
-import { get, post } from "../app/apiManager";
-import axios from "axios";
+import { get, post, put, del, postFormData, putFormData } from "../app/apiManager";
 
 const baseUrl = import.meta.env.VITE_BASE_URL;
 
 class CourseService {
-  // Get all courses with pagination and search
-  static async getCourses(page = 1, limit = 9, search = "") {
-    try {
-      const queryParams = new URLSearchParams({
-        page: page.toString(),
-        limit: limit.toString(),
-        ...(search && { search }),
-      });
-
-      const response = await get({
-        path: `/courses?${queryParams.toString()}`,
-      });
-      return response;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Get a single course by ID
+  // Get a single course by ID with content
   static async getCourseById(courseId) {
     try {
       const response = await get({
         path: `/courses/${courseId}`,
+        requiresAuth: true,
       });
       return response;
     } catch (error) {
@@ -34,12 +16,12 @@ class CourseService {
     }
   }
 
-  // Create a new course
-  static async createCourse(courseData) {
+  // Get all courses by instructor ID
+  static async getCoursesByInstructor(instructorId) {
     try {
-      const response = await post({
-        path: "/courses",
-        requestBody: courseData,
+      const response = await get({
+        path: `/courses/instructor/${instructorId}`,
+        requiresAuth: true,
       });
       return response;
     } catch (error) {
@@ -47,79 +29,80 @@ class CourseService {
     }
   }
 
-  // Update a course
-  static async updateCourse(courseId, courseData) {
-    try {
-      const response = await fetch(`${baseUrl}/courses/${courseId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(courseData),
-      });
-      const body = await response.json();
-      return body;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Delete a course
-  static async deleteCourse(courseId) {
-    try {
-      const response = await fetch(`${baseUrl}/courses/${courseId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-      const body = await response.json();
-      return body;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  // Upload course content (files)
-  static async uploadCourseContent(courseId, files, onUploadProgress) {
+  // Create a new course with optional content/files
+  static async createCourse(payload) {
     try {
       const formData = new FormData();
       
-      files.forEach((fileObj) => {
-        formData.append("files", fileObj.file);
-        formData.append("fileTypes", fileObj.type); // pdf, video, image
+      // Add course data as JSON string
+      const courseJson = {
+        courseName: payload.courseData.courseName,
+        courseCode: payload.courseData.courseCode,
+        description: payload.courseData.description,
+        instructorId: payload.courseData.instructorId,
+      };
+      
+      formData.append('course', JSON.stringify(courseJson));
+      
+      // Add files if provided
+      if (payload.files && payload.files.length > 0) {
+        payload.files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await postFormData({
+        path: "/courses",
+        formData: formData,
+        requiresAuth: true,
       });
       
-      formData.append("courseId", courseId);
-
-      const response = await axios.post(
-        `${baseUrl}/courses/${courseId}/content`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          onUploadProgress: (progressEvent) => {
-            if (onUploadProgress) {
-              const percentCompleted = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total
-              );
-              onUploadProgress(percentCompleted);
-            }
-          },
-        }
-      );
-      return response.data;
+      return response;
     } catch (error) {
       throw error;
     }
   }
 
-  // Get course content/materials
-  static async getCourseContent(courseId) {
+  // Update a course with optional new content/files
+  static async updateCourse(courseId, payload) {
     try {
-      const response = await get({
-        path: `/courses/${courseId}/content`,
+      const formData = new FormData();
+      
+      // Add course data as JSON string
+      const courseJson = {
+        courseName: payload.courseData.courseName,
+        courseCode: payload.courseData.courseCode,
+        description: payload.courseData.description,
+        instructorId: payload.courseData.instructorId,
+      };
+      
+      formData.append('course', JSON.stringify(courseJson));
+      
+      // Add new files if provided
+      if (payload.files && payload.files.length > 0) {
+        payload.files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      const response = await putFormData({
+        path: `/courses/${courseId}`,
+        formData: formData,
+        requiresAuth: true,
+      });
+      
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Soft delete course content
+  static async deleteCourseContent(contentId) {
+    try {
+      const response = await del({
+        path: `/course-content/${contentId}`,
+        requiresAuth: true,
       });
       return response;
     } catch (error) {
@@ -127,33 +110,43 @@ class CourseService {
     }
   }
 
-  // Delete course content
-  static async deleteCourseContent(courseId, contentId) {
-    try {
-      const response = await fetch(
-        `${baseUrl}/courses/${courseId}/content/${contentId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      const body = await response.json();
-      return body;
-    } catch (error) {
-      throw error;
-    }
+  // Get download URL for course content
+  static getDownloadUrl(fileUrl) {
+    // The fileUrl comes from the backend in format like "1/syllabus_1730044800000.pdf"
+    return `${baseUrl}/uploads/${fileUrl}`;
   }
 
-  // Download course content
-  static getDownloadUrl(contentId) {
-    return `${baseUrl}/courses/content/${contentId}/download`;
+  // Get preview URL for course content
+  static getPreviewUrl(fileUrl) {
+    // The fileUrl comes from the backend in format like "1/syllabus_1730044800000.pdf"
+    return `${baseUrl}/uploads/${fileUrl}`;
   }
 
-  // Get file preview URL
-  static getPreviewUrl(contentId) {
-    return `${baseUrl}/courses/content/${contentId}/preview`;
+  // Validate file type
+  static validateFileType(file) {
+    const allowedTypes = [
+      'application/pdf',
+      'video/mp4',
+      'image/jpeg',
+      'image/jpg',
+      'image/png',
+    ];
+    
+    return allowedTypes.includes(file.type);
+  }
+
+  // Validate file size (10MB max)
+  static validateFileSize(file) {
+    const maxSize = 10 * 1024 * 1024; // 10 MB in bytes
+    return file.size <= maxSize;
+  }
+
+  // Get file type category
+  static getFileTypeCategory(fileType) {
+    if (fileType === 'application/pdf') return 'pdf';
+    if (fileType === 'video/mp4') return 'video';
+    if (['image/jpeg', 'image/jpg', 'image/png'].includes(fileType)) return 'image';
+    return 'unknown';
   }
 }
 

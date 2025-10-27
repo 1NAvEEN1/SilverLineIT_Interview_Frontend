@@ -10,6 +10,8 @@ import {
   InputAdornment,
   IconButton,
   Link,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import {
   Visibility,
@@ -20,7 +22,9 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
-import { setUser } from "../../reducers/userSlice";
+import { setAuthData } from "../../reducers/userSlice";
+import UserService from "../../services/UserService";
+import AuthService from "../../services/AuthService";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -31,6 +35,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState("");
 
   const validate = () => {
     const e = {};
@@ -43,25 +48,44 @@ const Login = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault();
     if (!validate()) return;
-    setSubmitting(true);
 
-    // Mock login - replace with actual API call
-    setTimeout(() => {
-      // Set user data in Redux
+    setSubmitting(true);
+    setApiError("");
+
+    try {
+      // Call the login API
+      const response = await UserService.login(email, password);
+
+      // Store auth data in Redux
       dispatch(
-        setUser({
-          email: email,
-          name: email.split("@")[0],
+        setAuthData({
+          user: {
+            firstName: response.firstName,
+            lastName: response.lastName,
+            email: response.email,
+            userId: response.userId,
+          },
+          accessToken: response.accessToken,
+          refreshToken: response.refreshToken,
         })
       );
 
+      // Setup automatic token refresh
+      AuthService.setupTokenRefresh();
+
       // Navigate to home
       navigate("/home");
+    } catch (error) {
+      console.error("Login error:", error);
+      setApiError(
+        error.message || "Login failed. Please check your credentials."
+      );
+    } finally {
       setSubmitting(false);
-    }, 500);
+    }
   };
 
   return (
@@ -145,9 +169,9 @@ const Login = () => {
             >
               Welcome Back
             </Typography>
-            <Typography 
-              color="text.secondary" 
-              sx={{ 
+            <Typography
+              color="text.secondary"
+              sx={{
                 mt: 0.5,
                 fontSize: { xs: "0.813rem", sm: "0.875rem" },
               }}
@@ -157,6 +181,17 @@ const Login = () => {
           </Box>
 
           <Box component="form" onSubmit={handleSubmit} noValidate>
+            {/* API Error Alert */}
+            {apiError && (
+              <Alert
+                severity="error"
+                onClose={() => setApiError("")}
+                sx={{ mb: 2, borderRadius: 2 }}
+              >
+                {apiError}
+              </Alert>
+            )}
+
             {/* Email Field */}
             <TextField
               label="Email Address"
@@ -208,7 +243,11 @@ const Login = () => {
                       edge="end"
                       size="small"
                     >
-                      {showPassword ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                      {showPassword ? (
+                        <VisibilityOff fontSize="small" />
+                      ) : (
+                        <Visibility fontSize="small" />
+                      )}
                     </IconButton>
                   </InputAdornment>
                 ),
@@ -279,11 +318,13 @@ const Login = () => {
                 textTransform: "none",
                 boxShadow: "0 4px 12px rgba(102, 126, 234, 0.4)",
                 "&:hover": {
-                  background: "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
+                  background:
+                    "linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%)",
                   boxShadow: "0 6px 16px rgba(102, 126, 234, 0.5)",
                 },
                 "&:disabled": {
-                  background: "linear-gradient(135deg, #9fa8da 0%, #b39ddb 100%)",
+                  background:
+                    "linear-gradient(135deg, #9fa8da 0%, #b39ddb 100%)",
                 },
               }}
             >

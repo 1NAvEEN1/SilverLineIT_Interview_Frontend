@@ -35,36 +35,31 @@ const ViewContent = ({ courseId, onDelete }) => {
   const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
-    fetchContents();
+    if (courseId) {
+      fetchContents();
+    }
   }, [courseId]);
 
   const fetchContents = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await CourseService.getCourseContent(courseId);
       
-      if (response.success) {
-        setContents(response.data || []);
-      } else {
-        setError(response.message || "Failed to fetch content");
-      }
+      const response = await CourseService.getCourseById(courseId);
+      
+      // Extract contents from the course response
+      setContents(response.contents || []);
     } catch (err) {
-      setError("An error occurred while fetching content");
-      console.error(err);
+      console.error("Error fetching content:", err);
+      setError(err.message || "Failed to fetch content");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDownload = (content) => {
-    const url = CourseService.getDownloadUrl(content.id);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = content.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    const url = CourseService.getDownloadUrl(content.fileUrl);
+    window.open(url, '_blank');
   };
 
   const handlePreview = (content) => {
@@ -72,33 +67,27 @@ const ViewContent = ({ courseId, onDelete }) => {
   };
 
   const handleDelete = async (content) => {
-    if (window.confirm(`Are you sure you want to delete "${content.filename}"?`)) {
+    if (window.confirm(`Are you sure you want to delete "${content.fileName}"?`)) {
       try {
-        const response = await CourseService.deleteCourseContent(courseId, content.id);
-        if (response.success) {
-          setContents(contents.filter((c) => c.id !== content.id));
-          if (onDelete) onDelete(content);
-        } else {
-          alert(response.message || "Failed to delete content");
-        }
+        await CourseService.deleteCourseContent(content.id);
+        setContents(contents.filter((c) => c.id !== content.id));
+        if (onDelete) onDelete(content.id);
       } catch (err) {
-        alert("An error occurred while deleting content");
-        console.error(err);
+        console.error("Delete error:", err);
+        alert(err.message || "Failed to delete content");
       }
     }
   };
 
-  const getFileIcon = (type) => {
-    switch (type) {
-      case "pdf":
-        return { icon: PictureAsPdf, color: "#d32f2f" };
-      case "video":
-        return { icon: VideoLibrary, color: "#1976d2" };
-      case "image":
-        return { icon: ImageIcon, color: "#388e3c" };
-      default:
-        return { icon: PictureAsPdf, color: "#757575" };
+  const getFileIcon = (fileType) => {
+    if (fileType === 'application/pdf') {
+      return { icon: PictureAsPdf, color: "#d32f2f" };
+    } else if (fileType === 'video/mp4') {
+      return { icon: VideoLibrary, color: "#1976d2" };
+    } else if (fileType.startsWith('image/')) {
+      return { icon: ImageIcon, color: "#388e3c" };
     }
+    return { icon: PictureAsPdf, color: "#757575" };
   };
 
   const formatFileSize = (bytes) => {
@@ -121,7 +110,16 @@ const ViewContent = ({ courseId, onDelete }) => {
 
   const filterContentsByType = (type) => {
     if (type === "all") return contents;
-    return contents.filter((c) => c.type === type);
+    
+    if (type === "pdf") {
+      return contents.filter((c) => c.fileType === 'application/pdf');
+    } else if (type === "video") {
+      return contents.filter((c) => c.fileType === 'video/mp4');
+    } else if (type === "image") {
+      return contents.filter((c) => c.fileType?.startsWith('image/'));
+    }
+    
+    return contents;
   };
 
   const getFilteredContents = () => {
@@ -132,9 +130,9 @@ const ViewContent = ({ courseId, onDelete }) => {
   const getContentCounts = () => {
     return {
       all: contents.length,
-      pdf: contents.filter((c) => c.type === "pdf").length,
-      video: contents.filter((c) => c.type === "video").length,
-      image: contents.filter((c) => c.type === "image").length,
+      pdf: contents.filter((c) => c.fileType === 'application/pdf').length,
+      video: contents.filter((c) => c.fileType === 'video/mp4').length,
+      image: contents.filter((c) => c.fileType?.startsWith('image/')).length,
     };
   };
 
@@ -185,7 +183,7 @@ const ViewContent = ({ courseId, onDelete }) => {
       ) : (
         <Grid container spacing={2}>
           {filteredContents.map((content) => {
-            const { icon: Icon, color } = getFileIcon(content.type);
+            const { icon: Icon, color } = getFileIcon(content.fileType);
             return (
               <Grid item xs={12} sm={6} md={4} key={content.id}>
                 <Card
@@ -212,11 +210,12 @@ const ViewContent = ({ courseId, onDelete }) => {
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
                           }}
+                          title={content.fileName}
                         >
-                          {content.filename}
+                          {content.fileName}
                         </Typography>
                         <Chip
-                          label={content.type.toUpperCase()}
+                          label={CourseService.getFileTypeCategory(content.fileType).toUpperCase()}
                           size="small"
                           sx={{
                             bgcolor: color,
@@ -230,16 +229,21 @@ const ViewContent = ({ courseId, onDelete }) => {
                     </Box>
                     
                     <Typography variant="caption" color="text.secondary" display="block">
-                      Size: {formatFileSize(content.size)}
+                      Size: {formatFileSize(content.fileSize)}
                     </Typography>
                     <Typography variant="caption" color="text.secondary" display="block">
-                      Uploaded: {formatDate(content.uploadedAt)}
+                      Uploaded: {formatDate(content.uploadDate)}
                     </Typography>
+                    {content.uploadedByUserName && (
+                      <Typography variant="caption" color="text.secondary" display="block">
+                        By: {content.uploadedByUserName}
+                      </Typography>
+                    )}
                   </CardContent>
 
                   <CardActions sx={{ justifyContent: "space-between", px: 2, pb: 2 }}>
                     <Box>
-                      {(content.type === "image" || content.type === "pdf") && (
+                      {(content.fileType.startsWith('image/') || content.fileType === 'application/pdf') && (
                         <IconButton
                           size="small"
                           onClick={() => handlePreview(content)}
@@ -289,7 +293,7 @@ const ViewContent = ({ courseId, onDelete }) => {
           }}
         >
           <Typography variant="h6">
-            {previewDialog.content?.filename}
+            {previewDialog.content?.fileName}
           </Typography>
           <IconButton
             onClick={() => setPreviewDialog({ open: false, content: null })}
@@ -298,20 +302,20 @@ const ViewContent = ({ courseId, onDelete }) => {
           </IconButton>
         </Box>
         <DialogContent sx={{ p: 0 }}>
-          {previewDialog.content?.type === "image" && (
+          {previewDialog.content?.fileType?.startsWith('image/') && (
             <Box
               component="img"
-              src={CourseService.getPreviewUrl(previewDialog.content.id)}
-              alt={previewDialog.content.filename}
+              src={CourseService.getPreviewUrl(previewDialog.content.fileUrl)}
+              alt={previewDialog.content.fileName}
               sx={{ width: "100%", height: "auto" }}
             />
           )}
-          {previewDialog.content?.type === "pdf" && (
+          {previewDialog.content?.fileType === 'application/pdf' && (
             <Box sx={{ height: "70vh" }}>
               <iframe
-                src={CourseService.getPreviewUrl(previewDialog.content.id)}
+                src={CourseService.getPreviewUrl(previewDialog.content.fileUrl)}
                 style={{ width: "100%", height: "100%", border: "none" }}
-                title={previewDialog.content.filename}
+                title={previewDialog.content.fileName}
               />
             </Box>
           )}
