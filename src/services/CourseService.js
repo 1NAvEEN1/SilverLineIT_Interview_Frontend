@@ -34,15 +34,13 @@ class CourseService {
     try {
       const formData = new FormData();
       
-      // Add course data as JSON string
-      const courseJson = {
+      // Add course data as a single object
+      formData.append('course', JSON.stringify({
         courseName: payload.courseData.courseName,
         courseCode: payload.courseData.courseCode,
         description: payload.courseData.description,
         instructorId: payload.courseData.instructorId,
-      };
-      
-      formData.append('course', JSON.stringify(courseJson));
+      }));
       
       // Add files if provided
       if (payload.files && payload.files.length > 0) {
@@ -68,15 +66,13 @@ class CourseService {
     try {
       const formData = new FormData();
       
-      // Add course data as JSON string
-      const courseJson = {
+      // Add course data as a single object
+      formData.append('course', JSON.stringify({
         courseName: payload.courseData.courseName,
         courseCode: payload.courseData.courseCode,
         description: payload.courseData.description,
         instructorId: payload.courseData.instructorId,
-      };
-      
-      formData.append('course', JSON.stringify(courseJson));
+      }));
       
       // Add new files if provided
       if (payload.files && payload.files.length > 0) {
